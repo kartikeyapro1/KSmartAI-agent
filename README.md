@@ -1,4 +1,4 @@
-# GenAI Agent — Milestone 3A (Ollama, free & local)
+# GenAI Agent — Milestone 4: RAG with Ollama embeddings + reindex
 
 FastAPI service with:
 - Per-user **conversation memory** (last 8 turns, in RAM)

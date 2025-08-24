@@ -2,7 +2,7 @@ from pydantic import BaseModel
 from typing import List, Optional
 
 class Message(BaseModel):
-    role: str        # "user" | "assistant"
+    role: str
     content: str
 
 class ChatRequest(BaseModel):
@@ -11,4 +11,5 @@ class ChatRequest(BaseModel):
 
 class ChatResponse(BaseModel):
     reply: str
-    history: List[Message]          # return convo so you can debug in tests/clients
+    history: List[Message]
+    sources: Optional[List[str]] = None  # <-- add this
