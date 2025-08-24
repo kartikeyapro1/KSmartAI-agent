@@ -1,0 +1,11 @@
+### Health
+GET http://127.0.0.1:8000/health
+
+### Chat
+POST http://127.0.0.1:8000/chat
+Content-Type: application/json
+
+{
+  "user_id": "kart",
+  "message": "hello from IntelliJ"
+}
