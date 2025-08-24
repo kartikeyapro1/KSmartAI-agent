@@ -92,23 +92,36 @@ def _call_ollama(messages):
 
 @app.post("/chat", response_model=ChatResponse)
 def chat(req: ChatRequest):
+    user_msg = req.message
+
     # Save user turn
-    add_turn(req.user_id, "user", req.message)
+    add_turn(req.user_id, "user", user_msg)
 
     # RAG search
-    hits = rag.search(req.message, k=4)
+    hits = rag.search(user_msg, k=4)
     context_blocks = [f"[{src}] {txt}" for (txt, src) in hits]
     sources = list(dict.fromkeys([src for (_, src) in hits])) or None
 
+    # Strict grounded mode: refuse if no context
+    if req.grounded_only and not hits:
+        reply = "I don’t have that in your documents yet. Try uploading a file or disable grounded-only mode."
+        add_turn(req.user_id, "assistant", reply)
+        hist_msgs = [Message(role=r, content=c) for r, c in get_history(req.user_id)]
+        return ChatResponse(reply=reply, history=hist_msgs, sources=None)
+
     # Build messages (system + CONTEXT + memory + current user)
+    base_rules = (
+        "You have access to a CONTEXT block with snippets from the user's documents.\n"
+        "If the answer is in CONTEXT, use it and cite the file names.\n"
+        "If the answer isn't in CONTEXT, say you don't know.\n"
+        "Be concise."
+    )
+    if req.grounded_only:
+        base_rules += "\nAnswer strictly from CONTEXT; if unsure, reply: 'I don't know based on the docs.'"
+
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "system", "content": (
-            "You have access to a CONTEXT block with snippets from the user's documents.\n"
-            "If the answer is in CONTEXT, use it and cite the file names.\n"
-            "If the answer isn't in CONTEXT, say you don't know.\n"
-            "Be concise."
-        )},
+        {"role": "system", "content": base_rules},
     ]
     if context_blocks:
         messages.append({"role": "system", "content": "CONTEXT:\n" + "\n\n".join(context_blocks)})
@@ -117,7 +130,7 @@ def chat(req: ChatRequest):
         if role in ("user", "assistant"):
             messages.append({"role": role, "content": content})
 
-    messages.append({"role": "user", "content": req.message})
+    messages.append({"role": "user", "content": user_msg})
 
     # Guardrail: trim prompt size
     MAX_CHARS = 12000
@@ -139,9 +152,14 @@ def chat(req: ChatRequest):
     hist_msgs = [Message(role=r, content=c) for r, c in get_history(req.user_id)]
     return ChatResponse(reply=reply, history=hist_msgs, sources=sources)
 
-from pathlib import Path
-ROOT = Path(__file__).resolve().parents[1]
 
-# Serve the minimal UI at /ui (safer than "/")
+from fastapi.responses import RedirectResponse
+
+@app.get("/")
+def root():
+    return RedirectResponse(url="/ui")
+
+ROOT = Path(__file__).resolve().parents[1]
 app.mount("/ui", StaticFiles(directory=str(ROOT / "web"), html=True), name="web")
+
 

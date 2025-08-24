@@ -8,8 +8,9 @@ class Message(BaseModel):
 class ChatRequest(BaseModel):
     user_id: str
     message: str
+    grounded_only: bool = False   # NEW
 
 class ChatResponse(BaseModel):
     reply: str
     history: List[Message]
-    sources: Optional[List[str]] = None  # <-- add this
+    sources: Optional[List[str]] = None
