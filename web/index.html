@@ -27,9 +27,12 @@
 </head>
 <body>
 <h1>GenAI Agent</h1>
+
 <div id="bar">
     <button id="reindex" class="ghost">Reindex</button>
     <button id="clear" class="ghost">Clear memory</button>
+    <input id="files" type="file" multiple accept=".txt,.md,.pdf" />
+    <button id="upload" class="ghost">Upload</button>
     <span id="status">…</span>
 </div>
 
@@ -41,24 +44,25 @@
 </form>
 
 <script>
-    const base = location.origin; // same-origin as API
+    const base = location.origin;
     const chatEl = document.getElementById("chat");
     const input = document.getElementById("t");
     const form = document.getElementById("form");
     const statusEl = document.getElementById("status");
     const reindexBtn = document.getElementById("reindex");
     const clearBtn = document.getElementById("clear");
+    const filesEl = document.getElementById("files");
+    const uploadBtn = document.getElementById("upload");
 
-    // simple per-tab user id
     const uid = localStorage.getItem("genai_uid") || ("uid-" + Math.random().toString(36).slice(2));
     localStorage.setItem("genai_uid", uid);
 
-    function add(role, text, sources) {
+    function add(role, text, sources){
         const d = document.createElement("div");
         d.className = "msg " + (role === "you" ? "you" : "bot");
         d.textContent = text;
         chatEl.appendChild(d);
-        if (sources && sources.length) {
+        if (sources && sources.length){
             const meta = document.createElement("div");
             meta.className = "meta";
             meta.textContent = "Sources:";
@@ -76,23 +80,23 @@
         chatEl.scrollTop = chatEl.scrollHeight;
     }
 
-    async function health() {
-        try {
+    async function health(){
+        try{
             const r = await fetch(base + "/health");
             const j = await r.json();
             statusEl.textContent = `Model: ${j.model} · Provider: ${j.provider} · Status: ${j.status}`;
-        } catch (_) {
+        }catch{
             statusEl.textContent = "API unreachable";
         }
     }
 
-    form.addEventListener("submit", async (e) => {
+    form.addEventListener("submit", async (e)=>{
         e.preventDefault();
         const m = input.value;
-        if (!m.trim()) return;
+        if(!m.trim()) return;
         add("you", m);
         input.value = "";
-        try {
+        try{
             const r = await fetch(base + "/chat", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -100,41 +104,61 @@
             });
             const j = await r.json();
             add("bot", j.reply, j.sources);
-        } catch (err) {
+        }catch(err){
             add("bot", "Error: " + err);
         }
     });
 
-    // Shift+Enter for newline, Enter to send
-    input.addEventListener("keydown", (e) => {
-        if (e.key === "Enter" && !e.shiftKey) {
+    input.addEventListener("keydown", (e)=>{
+        if(e.key === "Enter" && !e.shiftKey){
             e.preventDefault();
             form.requestSubmit();
         }
     });
 
-    reindexBtn.addEventListener("click", async () => {
+    reindexBtn.addEventListener("click", async ()=>{
         reindexBtn.disabled = true;
-        try {
+        try{
             const r = await fetch(base + "/reindex", { method: "POST" });
             const j = await r.json();
             statusEl.textContent = `Reindexed · chunks: ${j.index?.chunks ?? "?"}`;
-        } catch {
+        }catch{
             statusEl.textContent = "Reindex error";
-        } finally {
+        }finally{
             reindexBtn.disabled = false;
         }
     });
 
-    clearBtn.addEventListener("click", async () => {
+    clearBtn.addEventListener("click", async ()=>{
         clearBtn.disabled = true;
-        try {
+        try{
             await fetch(base + `/memory/${encodeURIComponent(uid)}/clear`, { method: "POST" });
             add("bot", "(memory cleared)");
-        } catch {
+        }catch{
             add("bot", "(failed to clear memory)");
-        } finally {
+        }finally{
             clearBtn.disabled = false;
+        }
+    });
+
+    uploadBtn.addEventListener("click", async ()=>{
+        if(!filesEl.files || filesEl.files.length === 0){
+            statusEl.textContent = "Pick .txt/.md/.pdf first";
+            return;
+        }
+        uploadBtn.disabled = true;
+        try{
+            const fd = new FormData();
+            for(const f of filesEl.files) fd.append("files", f);
+            const r = await fetch(base + "/upload", { method: "POST", body: fd });
+            const j = await r.json();
+            if(!r.ok) throw new Error(j.detail || r.statusText);
+            statusEl.textContent = `Uploaded: ${j.saved.join(", ")} · Reindexed chunks: ${j.index?.chunks ?? "?"}`;
+            filesEl.value = "";
+        }catch(e){
+            statusEl.textContent = "Upload failed: " + e.message;
+        }finally{
+            uploadBtn.disabled = false;
         }
     });
 
