@@ -1,4 +1,4 @@
-# GenAI Agent — Milestone 4: RAG with Ollama embeddings + reindex
+# GenAI Agent — Milestone 5: Adding a web UI
 
 FastAPI service with:
 - Per-user **conversation memory** (last 8 turns, in RAM)
@@ -9,6 +9,16 @@ FastAPI service with:
 > Next milestone adds **RAG** (answer from your own docs) using local embeddings.
 
 ---
+## Minimal Web UI
+A static HTML/JS client is served by FastAPI.
+
+- Open `http://127.0.0.1:8000/`
+- Buttons:
+    - **Reindex** → rebuilds the RAG index from `data/docs/`
+    - **Clear memory** → clears per-user conversation
+- The UI keeps a `user_id` in `localStorage` so each tab has its own memory.
+
+> If you prefer to host the UI separately, you can open `web/index.html` directly and keep the API on `localhost:8000` (CORS is enabled).
 
 ## Stack
 - Backend: **FastAPI** (Python)

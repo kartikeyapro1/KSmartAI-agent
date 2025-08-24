@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <title>GenAI Agent</title>
+    <style>
+        :root { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+        body { max-width: 780px; margin: 24px auto; padding: 0 12px; }
+        h1 { margin: 0 0 12px; }
+        #bar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
+        #status { font-size: 0.9rem; color: #555; }
+        #chat { border: 1px solid #ddd; border-radius: 12px; padding: 12px; min-height: 240px; }
+        .msg { padding: 10px 12px; border-radius: 10px; margin: 8px 0; white-space: pre-wrap; }
+        .you { background: #eef; align-self: flex-end; }
+        .bot { background: #efe; }
+        .row { display: flex; flex-direction: column; }
+        #form { display: flex; gap: 8px; margin-top: 12px; }
+        #t { flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 8px; }
+        button { padding: 10px 14px; border: 0; border-radius: 10px; cursor: pointer; }
+        button.primary { background: #111; color: #fff; }
+        button.ghost { background: #f3f3f3; }
+        .meta { color: #555; font-size: .85rem; margin-top: 6px; }
+        .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+        .chip { background:#ddd; border-radius: 999px; padding: 2px 8px; font-size: .8rem; }
+    </style>
+</head>
+<body>
+<h1>GenAI Agent</h1>
+<div id="bar">
+    <button id="reindex" class="ghost">Reindex</button>
+    <button id="clear" class="ghost">Clear memory</button>
+    <span id="status">…</span>
+</div>
+
+<div id="chat" class="row"></div>
+
+<form id="form">
+    <input id="t" placeholder="Type a message… (Shift+Enter for newline)" />
+    <button class="primary">Send</button>
+</form>
+
+<script>
+    const base = location.origin; // same-origin as API
+    const chatEl = document.getElementById("chat");
+    const input = document.getElementById("t");
+    const form = document.getElementById("form");
+    const statusEl = document.getElementById("status");
+    const reindexBtn = document.getElementById("reindex");
+    const clearBtn = document.getElementById("clear");
+
+    // simple per-tab user id
+    const uid = localStorage.getItem("genai_uid") || ("uid-" + Math.random().toString(36).slice(2));
+    localStorage.setItem("genai_uid", uid);
+
+    function add(role, text, sources) {
+        const d = document.createElement("div");
+        d.className = "msg " + (role === "you" ? "you" : "bot");
+        d.textContent = text;
+        chatEl.appendChild(d);
+        if (sources && sources.length) {
+            const meta = document.createElement("div");
+            meta.className = "meta";
+            meta.textContent = "Sources:";
+            const chips = document.createElement("div");
+            chips.className = "chips";
+            sources.forEach(s => {
+                const c = document.createElement("span");
+                c.className = "chip";
+                c.textContent = s;
+                chips.appendChild(c);
+            });
+            chatEl.appendChild(meta);
+            chatEl.appendChild(chips);
+        }
+        chatEl.scrollTop = chatEl.scrollHeight;
+    }
+
+    async function health() {
+        try {
+            const r = await fetch(base + "/health");
+            const j = await r.json();
+            statusEl.textContent = `Model: ${j.model} · Provider: ${j.provider} · Status: ${j.status}`;
+        } catch (_) {
+            statusEl.textContent = "API unreachable";
+        }
+    }
+
+    form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const m = input.value;
+        if (!m.trim()) return;
+        add("you", m);
+        input.value = "";
+        try {
+            const r = await fetch(base + "/chat", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ user_id: uid, message: m })
+            });
+            const j = await r.json();
+            add("bot", j.reply, j.sources);
+        } catch (err) {
+            add("bot", "Error: " + err);
+        }
+    });
+
+    // Shift+Enter for newline, Enter to send
+    input.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            form.requestSubmit();
+        }
+    });
+
+    reindexBtn.addEventListener("click", async () => {
+        reindexBtn.disabled = true;
+        try {
+            const r = await fetch(base + "/reindex", { method: "POST" });
+            const j = await r.json();
+            statusEl.textContent = `Reindexed · chunks: ${j.index?.chunks ?? "?"}`;
+        } catch {
+            statusEl.textContent = "Reindex error";
+        } finally {
+            reindexBtn.disabled = false;
+        }
+    });
+
+    clearBtn.addEventListener("click", async () => {
+        clearBtn.disabled = true;
+        try {
+            await fetch(base + `/memory/${encodeURIComponent(uid)}/clear`, { method: "POST" });
+            add("bot", "(memory cleared)");
+        } catch {
+            add("bot", "(failed to clear memory)");
+        } finally {
+            clearBtn.disabled = false;
+        }
+    });
+
+    health();
+</script>
+</body>
+</html>

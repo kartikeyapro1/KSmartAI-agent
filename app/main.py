@@ -1,12 +1,13 @@
 import os
 import requests
+from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from dotenv import load_dotenv
+from fastapi.staticfiles import StaticFiles  # <-- use this to serve the web folder
 
-from app.schemas import ChatRequest, ChatResponse, Message
-from app.memory import add_turn, get_history, clear
 from app import rag
+from app.memory import add_turn, get_history, clear
+from app.schemas import ChatRequest, ChatResponse, Message
 
 load_dotenv()
 
@@ -16,10 +17,13 @@ SYSTEM_PROMPT = os.getenv("SYSTEM_PROMPT", "You are a helpful assistant.")
 
 app = FastAPI(title="GenAI Agent (Milestone 4 — RAG + Ollama)")
 
+# CORS (OK to keep permissive for local dev)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], allow_credentials=True,
-    allow_methods=["*"], allow_headers=["*"],
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 @app.get("/health")
@@ -54,8 +58,7 @@ def _call_ollama(messages):
         timeout=600,
     )
     r.raise_for_status()
-    data = r.json()
-    return data["message"]["content"].strip()
+    return r.json()["message"]["content"].strip()
 
 @app.post("/chat", response_model=ChatResponse)
 def chat(req: ChatRequest):
@@ -86,14 +89,13 @@ def chat(req: ChatRequest):
 
     messages.append({"role": "user", "content": req.message})
 
-    # Guardrail: trim to ~12k chars (keep newest)
+    # Guardrail: trim prompt size
     MAX_CHARS = 12000
     total, trimmed = 0, []
     for m in reversed(messages):
         c = len(m["content"])
         if total + c <= MAX_CHARS or m["role"] == "system":
-            trimmed.append(m)
-            total += c
+            trimmed.append(m); total += c
     messages = list(reversed(trimmed))
 
     # Call local LLM
@@ -106,3 +108,6 @@ def chat(req: ChatRequest):
     add_turn(req.user_id, "assistant", reply)
     hist_msgs = [Message(role=r, content=c) for r, c in get_history(req.user_id)]
     return ChatResponse(reply=reply, history=hist_msgs, sources=sources)
+
+# 🔻 Mount the static UI **last** so it doesn't swallow API routes
+app.mount("/", StaticFiles(directory="web", html=True), name="web")
