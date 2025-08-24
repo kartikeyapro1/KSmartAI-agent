@@ -1,11 +1,23 @@
 ### Health
 GET http://127.0.0.1:8000/health
 
-### Chat
+### Clear memory (start clean)
+POST http://127.0.0.1:8000/memory/kart/clear
+
+### First message
 POST http://127.0.0.1:8000/chat
 Content-Type: application/json
 
 {
   "user_id": "kart",
-  "message": "hello from IntelliJ"
+  "message": "My name is Kart."
+}
+
+### Second message (should reference the first)
+POST http://127.0.0.1:8000/chat
+Content-Type: application/json
+
+{
+  "user_id": "kart",
+  "message": "What did I just tell you about my name?"
 }
