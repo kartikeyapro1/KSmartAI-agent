@@ -19,7 +19,8 @@ PROVIDER = os.getenv("PROVIDER", "ollama").lower()
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.1")
 SYSTEM_PROMPT = os.getenv("SYSTEM_PROMPT", "You are a helpful assistant.")
 
-app = FastAPI(title="GenAI Agent (Milestone 6 — Upload + RAG + Ollama)")
+app = FastAPI(title="KSmartAI Agent — Upload + RAG + Ollama")
+
 
 # CORS (permissive for local dev)
 app.add_middleware(
@@ -153,13 +154,17 @@ def chat(req: ChatRequest):
     return ChatResponse(reply=reply, history=hist_msgs, sources=sources)
 
 
+from pathlib import Path
 from fastapi.responses import RedirectResponse
+from fastapi.staticfiles import StaticFiles
+
+ROOT = Path(__file__).resolve().parents[1]
 
 @app.get("/")
 def root():
-    return RedirectResponse(url="/ui")
+    return RedirectResponse(url="/ui/")
 
-ROOT = Path(__file__).resolve().parents[1]
 app.mount("/ui", StaticFiles(directory=str(ROOT / "web"), html=True), name="web")
+
 
 
