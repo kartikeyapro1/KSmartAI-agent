@@ -1,5 +1,16 @@
 # KSmartAI Agent — Local RAG Chatbot (Ollama + FastAPI + Web UI)
 ![img.png](img.png)
+### What I learned (mapped to Oracle GenAI topics)
+
+- **Prompting & system design:** Configurable `SYSTEM_PROMPT`, concise responses, memory trimming.
+- **Grounding (RAG):** Local embeddings with Ollama, chunking + cosine search, **citations** in responses.
+- **Hallucination control:** **Grounded-only** toggle; refuses when docs don’t cover the answer.
+- **Safety:** Minimal PII redaction (emails/phones) before memory storage; simple profanity flag.
+- **Evaluation:** `eval/qa.jsonl` + `eval/eval.py` to measure keyword hits and source correctness.
+- **Testing & CI:** Unit tests that stub the LLM/RAG; GitHub Actions runs tests on every push.
+- **DX:** One-click `run.py`, start scripts, `.env` config, and a small web UI.
+
+
 Runs fully local (no cloud keys):
 - Per-user **conversation memory** (last 8 turns)
 - **RAG** over your docs (TXT/MD/PDF) with local embeddings
