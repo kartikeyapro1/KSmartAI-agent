@@ -1,5 +1,5 @@
 # KSmartAI Agent — Local RAG Chatbot (Ollama + FastAPI + Web UI)
-
+![img.png](img.png)
 Runs fully local (no cloud keys):
 - Per-user **conversation memory** (last 8 turns)
 - **RAG** over your docs (TXT/MD/PDF) with local embeddings
