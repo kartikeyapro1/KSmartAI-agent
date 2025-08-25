@@ -36,17 +36,28 @@ DOCS_DIR = Path("data/docs")
 DOCS_DIR.mkdir(parents=True, exist_ok=True)
 ALLOWED_EXTS = {".txt", ".md", ".pdf"}
 
+import os
+import requests
+
+CI = os.getenv("CI") == "true"  # GitHub Actions sets CI=true
+
 @app.get("/health")
 def health():
-    ok = True
-    if PROVIDER == "ollama":
+    out = {
+        "status": "ok",           # app is up
+        "provider": PROVIDER,
+        "model": OLLAMA_MODEL,
+    }
+    # Only probe Ollama locally (CI has no daemon)
+    if PROVIDER == "ollama" and not CI:
         try:
             r = requests.get("http://localhost:11434/api/tags", timeout=2)
             r.raise_for_status()
+            out["ollama"] = "ok"
         except Exception:
-            ok = False
-    return {"status": "ok" if ok else "ollama-unreachable",
-            "provider": PROVIDER, "model": OLLAMA_MODEL}
+            out["ollama"] = "unreachable"
+    return out
+
 
 @app.post("/memory/{user_id}/clear")
 def clear_memory(user_id: str):
