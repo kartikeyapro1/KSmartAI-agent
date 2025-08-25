@@ -16,10 +16,24 @@ Runs fully local (no cloud keys):
 **Windows (PowerShell)**
 ```powershell
 .\scripts\start.ps1
+$ErrorActionPreference = "Stop"
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install --upgrade pip
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe run.py
+
 ```
 **macOS/Linux**
 ``` powershell
 ./scripts/start.sh
+#!/usr/bin/env bash
+set -e
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+python run.py
+
 ```
 ---
 ## Prerequisites 
