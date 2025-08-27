@@ -36,19 +36,13 @@ DOCS_DIR = Path("data/docs")
 DOCS_DIR.mkdir(parents=True, exist_ok=True)
 ALLOWED_EXTS = {".txt", ".md", ".pdf"}
 
-import os
-import requests
+import os, requests
 
-CI = os.getenv("CI") == "true"  # GitHub Actions sets CI=true
+CI = os.getenv("CI") == "true"
 
 @app.get("/health")
 def health():
-    out = {
-        "status": "ok",           # app is up
-        "provider": PROVIDER,
-        "model": OLLAMA_MODEL,
-    }
-    # Only probe Ollama locally (CI has no daemon)
+    out = {"status": "ok", "provider": PROVIDER, "model": OLLAMA_MODEL}
     if PROVIDER == "ollama" and not CI:
         try:
             r = requests.get("http://localhost:11434/api/tags", timeout=2)
@@ -57,6 +51,7 @@ def health():
         except Exception:
             out["ollama"] = "unreachable"
     return out
+
 
 
 @app.post("/memory/{user_id}/clear")
